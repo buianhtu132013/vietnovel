@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VietNovel Pro</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --reader-font: 'Segoe UI', sans-serif;
+            --reader-size: 20px;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --text-light: #94a3b8;
+            --border: #334155;
+            --primary: #60a5fa;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+        }
+
+        [data-font="serif"] { --reader-font: 'Merriweather', 'Times New Roman', serif; }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; transition: background 0.3s, color 0.3s; }
+
+        /* --- UI COMPONENTS --- */
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: 0.2s; font-size: 0.95rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-outline { border: 1px solid var(--border); background: transparent; color: var(--text); }
+        .btn-outline:hover { background: rgba(125,125,125,0.1); }
+        
+        /* Small button specific */
+        .btn-mini { padding: 4px 8px; font-size: 0.8rem; min-width: 32px; }
+
+        input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); outline: none; }
+        input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
+
+        /* --- HEADER & USER DROPDOWN --- */
+        header { 
+            background: var(--surface); border-bottom: 1px solid var(--border); 
+            padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; 
+            position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); height: 60px;
+        }
+        .logo { font-size: 1.4rem; font-weight: 800; color: var(--primary); cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        
+        .user-menu { position: relative; }
+        .user-avatar { 
+            display: flex; align-items: center; gap: 8px; cursor: pointer; 
+            padding: 5px 12px; border-radius: 20px; background: rgba(125,125,125,0.1); 
+            font-weight: 600; font-size: 0.9rem; user-select: none;
+        }
+        .user-avatar:hover { background: rgba(125,125,125,0.2); }
+        
+        .dropdown-content {
+            display: none; position: absolute; right: 0; top: 120%; 
+            background: var(--surface); min-width: 200px; 
+            box-shadow: var(--shadow); border-radius: 8px; border: 1px solid var(--border);
+            overflow: hidden; z-index: 101;
+        }
+        .dropdown-content.show { display: block; animation: fadeIn 0.2s; }
+        .dropdown-item { padding: 12px 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; border-bottom: 1px solid var(--border); }
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover { background: rgba(125,125,125,0.1); }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- LAYOUTS --- */
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; width: 100%; flex: 1; }
+        .hidden { display: none !important; }
+
+        /* Auth Box */
+        .auth-box { max-width: 380px; margin: 40px auto; padding: 30px; background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); text-align: center; border: 1px solid var(--border); }
+        .link { color: var(--primary); cursor: pointer; font-size: 0.9rem; margin-top: 15px; display: block; }
+        .link:hover { text-decoration: underline; }
+
+        /* Novel List */
+        .novel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; padding-bottom: 40px; }
+        .novel-card { 
+            background: var(--surface); border: 1px solid var(--border); padding: 20px; 
+            border-radius: 10px; cursor: pointer; transition: 0.2s; height: 100%; 
+            display: flex; flex-direction: column;
+        }
+        .novel-card:hover { transform: translateY(-4px); border-color: var(--primary); box-shadow: var(--shadow); }
+        .novel-card h3 { color: var(--text); margin-bottom: 8px; line-height: 1.3; }
+        .novel-card .meta { font-size: 0.85rem; color: var(--text-light); margin-bottom: 12px; display: block; }
+        .novel-card .desc { font-size: 0.9rem; color: var(--text-light); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+        /* --- READER VIEW (UPDATED) --- */
+        #reader-view { position: relative; max-width: 800px; margin: 0 auto; padding-top: 20px; }
+        
+        /* Nút thoát nhỏ ở màn hình */
+        .floating-back-btn {
+            position: fixed; top: 70px; left: 20px; /* Dưới header 1 chút */
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--surface); border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; z-index: 90;
+            color: var(--text); font-weight: bold; font-size: 1.2rem;
+        }
+        .floating-back-btn:hover { background: var(--border); }
+
+        .reader-header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+        
+        .reader-content { 
+            font-family: var(--reader-font); font-size: var(--reader-size); 
+            line-height: 1.8; white-space: pre-wrap; text-align: justify; 
+            margin: 20px 0; padding: 0 10px;
+        }
+
+        /* Nav Controls (Top & Bottom) */
+        .nav-controls { display: flex; justify-content: space-between; gap: 10px; margin: 20px 0; }
+        .nav-controls .btn { flex: 1; max-width: 150px; }
+
+        /* Mini Toolbar (Font size) */
+        .mini-toolbar {
+            position: fixed; bottom: 20px; right: 20px;
+            background: var(--surface); padding: 5px; border-radius: 30px;
+            display: flex; gap: 5px; align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); border: 1px solid var(--border);
+            z-index: 90;
+        }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .floating-back-btn { top: auto; bottom: 80px; left: 20px; /* Di chuyển xuống dưới trên mobile để đỡ vướng */ }
+            header { padding: 10px 15px; }
+            .container { padding: 15px; }
+        }
+    </style>
+</head>
+<body data-theme="light" data-font="sans">
+
+    <header id="main-header">
+        <div class="logo" onclick="app.goHome()">📖 <span style="font-size:1.2rem">VietNovel</span></div>
+        <div id="user-nav">
+            </div>
+    </header>
+
+    <div class="container">
+        
+        <div id="auth-view" class="hidden">
+            <div class="auth-box">
+                <h2 id="auth-title" style="margin-bottom:20px; color:var(--primary)">Đăng Nhập</h2>
+                <form onsubmit="app.handleAuth(event)">
+                    <input type="text" id="username" placeholder="Tên đăng nhập" required>
+                    <input type="password" id="password" placeholder="Mật khẩu" required>
+                    <button class="btn btn-primary" style="width:100%; margin-top:10px">Tiếp tục</button>
+                </form>
+                <span class="link" onclick="app.toggleAuthMode()" id="auth-toggle-msg">Chưa có tài khoản? Đăng ký ngay</span>
+            </div>
+        </div>
+
+        <div id="home-view">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px">
+                <h2 style="font-size:1.5rem">Thư viện truyện</h2>
+                <button class="btn btn-primary" onclick="app.openCreateNovel()">+ Viết Truyện</button>
+            </div>
+            <div id="novel-list" class="novel-grid"></div>
+        </div>
+
+        <div id="create-novel-view" class="hidden">
+            <div style="max-width:600px; margin:0 auto">
+                <h2>Thông tin truyện</h2>
+                <form onsubmit="app.submitNovelMeta(event)">
+                    <label style="font-weight:600; font-size:0.9rem">Tên truyện</label>
+                    <input type="text" id="new-novel-title" required>
+                    <label style="font-weight:600; font-size:0.9rem">Mô tả</label>
+                    <textarea id="new-novel-desc" rows="4" required></textarea>
+                    <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end">
+                        <button type="button" class="btn btn-outline" onclick="app.goHome()">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Lưu Truyện</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="novel-detail-view" class="hidden">
+            <button class="btn btn-outline btn-mini" onclick="app.goHome()" style="margin-bottom:15px">← Quay lại</button>
+            
+            <div style="background:var(--surface); padding:25px; border-radius:12px; border:1px solid var(--border); text-align:center">
+                <h1 id="detail-title" style="color:var(--primary); margin-bottom:10px"></h1>
+                <p id="detail-meta" style="color:var(--text-light); font-size:0.9rem; margin-bottom:15px"></p>
+                <p id="detail-desc" style="color:var(--text); line-height:1.6"></p>
+
+                <div id="author-tools" class="hidden" style="margin-top:20px; padding-top:20px; border-top:1px dashed var(--border); display:flex; justify-content:center; gap:10px">
+                    <button class="btn btn-primary" onclick="app.openChapterEditor()">+ Thêm Chương</button>
+                    <button class="btn btn-danger" onclick="app.deleteCurrentNovel()">Xóa Truyện</button>
+                </div>
+            </div>
+
+            <h3 style="margin: 30px 0 15px 0">Danh sách chương</h3>
+            <div id="chapter-list"></div>
+        </div>
+
+        <div id="chapter-editor-view" class="hidden">
+            <h2 id="editor-heading" style="margin-bottom:20px">Soạn thảo</h2>
+            <form onsubmit="app.saveChapter(event)">
+                <input type="hidden" id="edit-chapter-index">
+                <input type="text" id="editor-title" placeholder="Tiêu đề chương (VD: Chương 1)" required style="font-weight:bold">
+                <textarea id="editor-content" rows="20" placeholder="Nội dung chương..." required style="font-family:var(--reader-font)"></textarea>
+                <div style="margin-top:15px; text-align:right">
+                    <button type="button" class="btn btn-outline" onclick="app.backToDetail()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Xuất bản</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="reader-view" class="hidden">
+            <div class="floating-back-btn" onclick="app.backToDetail()" title="Về mục lục">✕</div>
+
+            <div class="reader-header">
+                <div id="read-novel-title" style="color:var(--text-light); font-size:0.9rem; text-transform:uppercase; letter-spacing:1px"></div>
+                <h2 id="read-chapter-title" style="font-size:1.8rem; margin-top:8px"></h2>
+            </div>
+
+            <div class="nav-controls">
+                <button id="btn-prev-chap-top" class="btn btn-outline" onclick="app.navChapter(-1)">← Trước</button>
+                <button id="btn-next-chap-top" class="btn btn-primary" onclick="app.navChapter(1)">Sau →</button>
+            </div>
+
+            <div id="read-content" class="reader-content"></div>
+
+            <div class="nav-controls" style="border-top:1px solid var(--border); padding-top:20px">
+                <button id="btn-prev-chap" class="btn btn-outline" onclick="app.navChapter(-1)">← Chương Trước</button>
+                <button id="btn-next-chap" class="btn btn-primary" onclick="app.navChapter(1)">Chương Sau →</button>
+            </div>
+
+            <div class="mini-toolbar">
+                <button class="btn btn-outline btn-mini" onclick="app.adjustSize(-1)">A-</button>
+                <span style="font-size:0.8rem; font-weight:bold; width:20px; text-align:center">T</span>
+                <button class="btn btn-outline btn-mini" onclick="app.adjustSize(1)">A+</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const app = {
+            data: {
+                users: JSON.parse(localStorage.getItem('pro_users')) || [],
+                novels: JSON.parse(localStorage.getItem('pro_novels')) || [],
+                currentUser: JSON.parse(localStorage.getItem('pro_cur_user')) || null,
+                settings: JSON.parse(localStorage.getItem('pro_settings')) || { theme: 'light', size: 20 }
+            },
+            state: { viewingNovelId: null, readingChapterIndex: 0, isRegisterMode: false },
+
+            init: function() {
+                this.applySettings();
+                this.renderUserNav();
+                
+                // Đóng dropdown khi click ra ngoài
+                window.onclick = function(event) {
+                    if (!event.target.closest('.user-menu')) {
+                        const dropdowns = document.getElementsByClassName("dropdown-content");
+                        for (let i = 0; i < dropdowns.length; i++) {
+                            dropdowns[i].classList.remove('show');
+                        }
+                    }
+                }
+
+                if (!this.data.currentUser) this.showAuth();
+                else this.goHome();
+            },
+
+            persist: function() {
+                localStorage.setItem('pro_users', JSON.stringify(this.data.users));
+                localStorage.setItem('pro_novels', JSON.stringify(this.data.novels));
+                localStorage.setItem('pro_settings', JSON.stringify(this.data.settings));
+            },
+
+            // --- AUTH & USER MENU ---
+            toggleAuthMode: function() {
+                this.state.isRegisterMode = !this.state.isRegisterMode;
+                document.getElementById('auth-title').innerText = this.state.isRegisterMode ? 'Đăng Ký Tài Khoản' : 'Đăng Nhập';
+                document.getElementById('auth-toggle-msg').innerText = this.state.isRegisterMode ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký ngay';
+            },
+
+            handleAuth: function(e) {
+                e.preventDefault();
+                const u = document.getElementById('username').value.trim();
+                const p = document.getElementById('password').value.trim();
+
+                if (this.state.isRegisterMode) {
+                    if (this.data.users.find(x => x.username === u)) return alert('Tên đăng nhập đã tồn tại!');
+                    this.data.users.push({ username: u, password: p });
+                    this.persist();
+                    alert('Đăng ký thành công! Vui lòng đăng nhập.');
+                    this.toggleAuthMode();
+                } else {
+                    const user = this.data.users.find(x => x.username === u && x.password === p);
+                    if (!user) return alert('Sai tên đăng nhập hoặc mật khẩu!');
+                    this.data.currentUser = user;
+                    localStorage.setItem('pro_cur_user', JSON.stringify(user));
+                    this.renderUserNav();
+                    this.goHome();
+                }
+            },
+
+            logout: function() {
+                this.data.currentUser = null;
+                localStorage.removeItem('pro_cur_user');
+                this.renderUserNav();
+                this.showAuth();
+            },
+
+            renderUserNav: function() {
+                const nav = document.getElementById('user-nav');
+                if (this.data.currentUser) {
+                    nav.innerHTML = `
+                        <div class="user-menu" onclick="app.toggleDropdown()">
+                            <div class="user-avatar">
+                                👤 ${this.data.currentUser.username} ▾
+                            </div>
+                            <div id="userDropdown" class="dropdown-content">
+                                <div class="dropdown-item" onclick="app.toggleTheme()">
+                                    <span>🌓</span> Chế độ Tối/Sáng
+                                </div>
+                                <div class="dropdown-item" onclick="app.logout()" style="color:var(--danger)">
+                                    <span>🚪</span> Đăng xuất
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    nav.innerHTML = ''; // Ẩn khi ở màn hình login
+                }
+            },
+
+            toggleDropdown: function() {
+                document.getElementById("userDropdown").classList.toggle("show");
+            },
+
+            // --- NAVIGATION ---
+            hideAll: function() {
+                ['auth-view', 'home-view', 'create-novel-view', 'novel-detail-view', 'chapter-editor-view', 'reader-view'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                });
+                // Hiện lại header nếu bị ẩn (trong reader mode có thể muốn ẩn, nhưng bài này giữ lại)
+                document.getElementById('main-header').classList.remove('hidden'); 
+            },
+
+            showAuth: function() { 
+                this.hideAll(); 
+                document.getElementById('auth-view').classList.remove('hidden'); 
+                document.getElementById('main-header').classList.add('hidden'); // Ẩn header khi login
+            },
+            
+            goHome: function() {
+                this.hideAll();
+                document.getElementById('home-view').classList.remove('hidden');
+                this.renderNovelList();
+            },
+
+            // --- LOGIC TRUYỆN ---
+            renderNovelList: function() {
+                const list = document.getElementById('novel-list');
+                list.innerHTML = '';
+                if(this.data.novels.length === 0) {
+                    list.innerHTML = '<div style="text-align:center; grid-column:1/-1; padding:40px; color:#888">Chưa có truyện nào.</div>';
+                    return;
+                }
+                this.data.novels.forEach(n => {
+                    const div = document.createElement('div');
+                    div.className = 'novel-card';
+                    div.innerHTML = `
+                        <h3>${n.title}</h3>
+                        <span class="meta">✍️ ${n.author} &bull; ${n.chapters.length} chương</span>
+                        <div class="desc">${n.desc}</div>
+                    `;
+                    div.onclick = () => this.viewNovelDetail(n.id);
+                    list.appendChild(div);
+                });
+            },
+
+            openCreateNovel: function() {
+                this.hideAll();
+                document.getElementById('create-novel-view').classList.remove('hidden');
+                document.getElementById('new-novel-title').value = '';
+                document.getElementById('new-novel-desc').value = '';
+            },
+
+            submitNovelMeta: function(e) {
+                e.preventDefault();
+                const title = document.getElementById('new-novel-title').value;
+                const desc = document.getElementById('new-novel-desc').value;
+                const newNovel = {
+                    id: Date.now(), title, desc,
+                    author: this.data.currentUser.username,
+                    chapters: []
+                };
+                this.data.novels.unshift(newNovel);
+                this.persist();
+                this.viewNovelDetail(newNovel.id);
+            },
+
+            viewNovelDetail: function(id) {
+                const novel = this.data.novels.find(n => n.id === id);
+                if (!novel) return;
+                this.state.viewingNovelId = id;
+                this.hideAll();
+                document.getElementById('novel-detail-view').classList.remove('hidden');
+                
+                document.getElementById('detail-title').innerText = novel.title;
+                document.getElementById('detail-desc').innerText = novel.desc;
+                document.getElementById('detail-meta').innerText = `Tác giả: ${novel.author} | ${novel.chapters.length} Chương`;
+
+                // Check Author
+                const isAuthor = this.data.currentUser.username === novel.author;
+                const tools = document.getElementById('author-tools');
+                isAuthor ? tools.classList.remove('hidden') : tools.classList.add('hidden');
+
+                const list = document.getElementById('chapter-list');
+                list.innerHTML = '';
+                
+                if (novel.chapters.length === 0) list.innerHTML = '<p style="text-align:center; color:#888">Chưa có chương nào.</p>';
+                
+                novel.chapters.forEach((chap, idx) => {
+                    const item = document.createElement('div');
+                    item.style.padding = '12px 0';
+                    item.style.borderBottom = '1px solid #eee';
+                    item.style.display = 'flex';
+                    item.style.justifyContent = 'space-between';
+                    
+                    let btns = isAuthor ? `
+                        <div>
+                            <button class="btn btn-outline btn-mini" onclick="app.openChapterEditor(${idx})">Sửa</button>
+                            <button class="btn btn-danger btn-mini" onclick="app.deleteChapter(${idx})">Xóa</button>
+                        </div>` : '';
+
+                    item.innerHTML = `<span style="cursor:pointer; font-weight:500" onclick="app.readChapter(${idx})">${chap.title}</span>${btns}`;
+                    list.appendChild(item);
+                });
+            },
+
+            deleteCurrentNovel: function() {
+                if(!confirm('XÓA TRUYỆN NÀY? Không thể hồi phục!')) return;
+                this.data.novels = this.data.novels.filter(n => n.id !== this.state.viewingNovelId);
+                this.persist();
+                this.goHome();
+            },
+
+            // --- CHAPTER LOGIC ---
+            openChapterEditor: function(index = -1) {
+                this.hideAll();
+                document.getElementById('chapter-editor-view').classList.remove('hidden');
+                const novel = this.data.novels.find(n => n.id === this.state.viewingNovelId);
+                document.getElementById('edit-chapter-index').value = index;
+                
+                if (index === -1) {
+                    document.getElementById('editor-heading').innerText = 'Viết chương mới';
+                    document.getElementById('editor-title').value = `Chương ${novel.chapters.length + 1}: `;
+                    document.getElementById('editor-content').value = '';
+                } else {
+                    document.getElementById('editor-heading').innerText = 'Sửa chương';
+                    document.getElementById('editor-title').value = novel.chapters[index].title;
+                    document.getElementById('editor-content').value = novel.chapters[index].content;
+                }
+            },
+
+            saveChapter: function(e) {
+                e.preventDefault();
+                const novel = this.data.novels.find(n => n.id === this.state.viewingNovelId);
+                const idx = parseInt(document.getElementById('edit-chapter-index').value);
+                const title = document.getElementById('editor-title').value;
+                const content = document.getElementById('editor-content').value;
+
+                if (idx === -1) novel.chapters.push({ title, content });
+                else { novel.chapters[idx].title = title; novel.chapters[idx].content = content; }
+
+                this.persist();
+                this.viewNovelDetail(this.state.viewingNovelId);
+            },
+
+            deleteChapter: function(idx) {
+                if(!confirm('Xóa chương này?')) return;
+                const novel = this.data.novels.find(n => n.id === this.state.viewingNovelId);
+                novel.chapters.splice(idx, 1);
+                this.persist();
+                this.viewNovelDetail(this.state.viewingNovelId);
+            },
+
+            backToDetail: function() {
+                this.viewNovelDetail(this.state.viewingNovelId);
+            },
+
+            // --- READER ENGINE ---
+            readChapter: function(idx) {
+                const novel = this.data.novels.find(n => n.id === this.state.viewingNovelId);
+                if (!novel || !novel.chapters[idx]) return;
+
+                this.state.readingChapterIndex = idx;
+                this.hideAll();
+                document.getElementById('reader-view').classList.remove('hidden');
+                document.getElementById('main-header').classList.add('hidden'); // Ẩn header chính khi đọc để tập trung
+                window.scrollTo(0, 0);
+
+                document.getElementById('read-novel-title').innerText = novel.title;
+                document.getElementById('read-chapter-title').innerText = novel.chapters[idx].title;
+                document.getElementById('read-content').innerText = novel.chapters[idx].content;
+
+                // Cập nhật trạng thái nút
+                const isFirst = idx === 0;
+                const isLast = idx === novel.chapters.length - 1;
+
+                ['btn-prev-chap', 'btn-prev-chap-top'].forEach(id => document.getElementById(id).disabled = isFirst);
+                ['btn-next-chap', 'btn-next-chap-top'].forEach(id => document.getElementById(id).disabled = isLast);
+            },
+
+            navChapter: function(dir) {
+                this.readChapter(this.state.readingChapterIndex + dir);
+            },
+
+            // --- SETTINGS ---
+            applySettings: function() {
+                document.body.setAttribute('data-theme', this.data.settings.theme);
+                document.documentElement.style.setProperty('--reader-size', this.data.settings.size + 'px');
+            },
+
+            toggleTheme: function() {
+                this.data.settings.theme = this.data.settings.theme === 'light' ? 'dark' : 'light';
+                this.persist();
+                this.applySettings();
+            },
+
+            adjustSize: function(delta) {
+                let s = this.data.settings.size + delta;
+                if (s >= 14 && s <= 36) {
+                    this.data.settings.size = s;
+                    this.persist();
+                    this.applySettings();
+                }
+            }
+        };
+
+        app.init();
+    </script>
+</body>
+</html>
